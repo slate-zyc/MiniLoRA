@@ -1,0 +1,6 @@
+experiment,rank,train_samples,valid_samples,max_length,epochs,batch_size,grad_accum,train_loss,eval_loss,trainable_params_pct,adapter_dir
+rank4_1000,4,1000,159,256,1.0,1,4,2.734,2.683,0.44%,outputs/lora_ablation/lora_rank4_1000
+rank8_1000,8,1000,159,256,1.0,1,4,2.732,2.678,0.88%,outputs/lora_ablation/lora_rank8_1000
+rank16_1000,16,1000,159,256,1.0,1,4,2.740,2.673,1.75%,outputs/lora_ablation/lora_rank16_1000
+rank8_200,8,200,159,256,1.0,1,4,2.685,2.789,0.88%,outputs/lora_ablation/lora_rank8_200
+rank8_5000,8,4999,159,256,1.0,1,4,2.708,2.611,0.88%,outputs/lora_ablation/lora_rank8_5000

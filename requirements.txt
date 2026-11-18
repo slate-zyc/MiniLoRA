@@ -1,0 +1,31 @@
+# 本次实验环境：Python 3.11.18 / Windows / CUDA 12.4
+# 先按 README.md 安装 CUDA PyTorch wheel，再安装本文件。
+# 核心训练、推理与数据处理
+# 张量计算、自动求导和 CUDA 加速，是模型训练与推理的基础。
+torch==2.6.0+cu124
+# 加载模型和分词器，提供 Trainer、训练参数配置及文本生成接口。
+transformers==5.23.0
+# 构建训练和验证数据集，执行 map 预处理与 filter 样本过滤。
+datasets==5.2.0
+# 配置和训练 LoRA，并将保存的 adapter 加载到基础模型上。
+peft==0.21.3
+# 为 Trainer 提供设备管理、混合精度和梯度累积等支持。
+accelerate==1.15.0
+# 从 Hugging Face 下载模型、分词器和数据文件。
+huggingface_hub==2.4.0
+# 提供快速分词后端，完成文本与 token ID 之间的编码、解码。
+tokenizers==0.23.3
+# 读写模型及 LoRA adapter 的 .safetensors 权重文件。
+safetensors==0.8.0
+# 分词兼容依赖，为采用 SentencePiece 的模型提供子词分词支持。
+sentencepiece==0.2.3
+# 解析 Protocol Buffers 格式，供部分分词器模型的解析与转换使用。
+protobuf==7.36.2
+
+# 数据审计与 Notebook 内核
+# 提供数值数组与统计计算，也是 pandas 等数据处理库的基础依赖。
+numpy==2.4.6
+# 将数据审计结果整理成表格，展示样本长度和截断比例等统计信息。
+pandas==3.1.1
+# 为 Notebook 提供 Python 内核，在所选 minilora 环境中执行代码单元。
+ipykernel==7.3.0

@@ -1,0 +1,53 @@
+# 本地模型、LoRA 权重和训练状态
+/models/
+/LLMModels/
+/outputs/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# 下载的原始数据与可重新生成的数据划分
+/data/medical_raw/
+/data/medical/train.jsonl
+/data/medical/valid.jsonl
+/data/medical/test.jsonl
+
+# 下载缓存与普通运行日志
+.hf_cache/
+.cache/
+/logs/
+*.log
+
+# 保留用于分析和复现的实验日志
+!results/logs/*.log
+
+# Python 环境、缓存和构建产物
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Notebook 与编辑器本地状态
+.ipynb_checkpoints/
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 本地环境配置和系统文件
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+desktop.ini
