@@ -8,6 +8,9 @@
         model_eval/results/dev_original_lora/greedy_length256_repeat1.0 `
         model_eval/results/dev_original_lora/temp0.3_length256_repeat1.1 `
         model_eval/results/dev_original_lora/temp0.7_length256_repeat1.1
+
+    $run = "model_eval/results/test_all_models/temp0.3_length256_repeat1.1"
+    python model_eval/analyze_results.py --run-dir $run --output-file "$run/test_comparison.md"
 """
 
 import argparse
@@ -36,7 +39,7 @@ def repeat_ratio(response: str, n: int) -> float:
 def main():
     parser = argparse.ArgumentParser(description="比较不同生成配置的重复与截断")
     parser.add_argument("--run-dir", type=Path, nargs="+", required=True, help="生成结果目录，可指定多个")      # nargs="+"：至少接收一个值，可以接收多个值；不设置时默认介绍一个值
-    parser.add_argument("--output-file", type=Path, default="model_eval/results/dev_comparison.md",
+    parser.add_argument("--output-file", type=Path, default="model_eval/results/dev_original_lora/dev_comparison.md",
                         help="将对照表另存为 Markdown")
     args = parser.parse_args()
 

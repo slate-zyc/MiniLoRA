@@ -13,6 +13,9 @@
     python model_eval/run_eval.py --split dev --model original_lora --temperature 0.3 --max-new-tokens 256 --repetition-penalty 1.1
     python model_eval/run_eval.py --split dev --model original_lora --temperature 0.7 --max-new-tokens 256 --repetition-penalty 1.1
 
+    # 正式评测
+    python model_eval/run_eval.py --split test
+
 输出:
     results/本次运行目录/answers.jsonl
     results/本次运行目录/run_info.json
@@ -186,8 +189,8 @@ def main():
 
     # 结果文件保存目录及命名规则
     model_name = args.model or "all_models"
-    decoding_name = f"temp{args.temperature}" if generation["do_sample"] else "greedy"
-    output_dir = (args.output_dir or EVAL_DIR / "results" / f"{args.split}_{model_name}" / f"{decoding_name}_length{args.max_new_tokens}_repeat{args.repetition_penalty}")
+    decoding_name = f"temp{generation['temperature']}" if generation["do_sample"] else "greedy"
+    output_dir = (args.output_dir or EVAL_DIR / "results" / f"{args.split}_{model_name}" / f"{decoding_name}_length{generation['max_new_tokens']}_repeat{generation['repetition_penalty']}")
     output_dir.mkdir(parents=True, exist_ok=True)  # 每次运行单独保存，保留已有回答和评分
 
     # 统一使用 Qwen2.5-0.5B-Instruct 的分词器
