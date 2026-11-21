@@ -4,6 +4,8 @@
 
 目前完成了数据准备、LoRA 训练、10 题生成评测，以及 rank 和训练数据量两组消融对比。项目重点是理解数据、训练配置与模型表现之间的关系。
 
+消融实验完成后，另做了一轮三模型、100 题的正式评测。 [评测思路与步骤](#消融实验后的模型评测)
+
 ## 当前结果
 
 10 题生成对比中，Base 的整体表达更清晰，LoRA 出现了更多重复、机械列举和重点偏移。后续优先改进监督数据质量，并测试清洗数据后的训练轮数。
@@ -19,6 +21,8 @@
 五组均使用相同的 159 条有效验证数据，固定 alpha/r=2。增加数据量的收益大于本次增加 rank 的收益，rank8_5000 的验证损失最低。
 
 详细记录：[实验结果分析](实验结果分析.md) · [消融 CSV](results/lora_ablation_summary.csv) · [训练日志](results/logs/lora_ablation_20261118.log) · [生成对比](results/base_vs_lora.jsonl)
+
+消融实验后的 100 题正式评测中，`base` 在 45 道共同可评分题上的平均总分最高（5.51/8），`original_lora` 和 `rank8_5000` 分别为 4.73 和 4.04。`original_lora` 截断最少（18/100），`rank8_5000` 的平均重复比例最高（19.4%）。 [完整评测结果](#正式测试结果)
 
 ## 项目结构
 
@@ -39,6 +43,16 @@ MiniLoRA/
 │   ├── infer_compare.py               # 单题 Base/LoRA 生成对比
 │   ├── eval_lora.py                   # 批量生成对比，保存 JSONL
 │   └── ablation_experiment.py         # 五组消融及 CSV 汇总
+├── model_eval/                       # 调试集选配置与正式测试
+│   ├── README.md                      # 评测流程、调试记录与评分规则
+│   ├── eval_config.json               # 固定推理配置
+│   ├── dev_set.jsonl                  # 20 道调试题
+│   ├── test_set.jsonl                 # 100 道正式测试题
+│   ├── prepare_eval_data.py           # 整理并划分评测数据
+│   ├── check_data.py                  # 检查题集重复及与训练、验证集重合
+│   ├── run_eval.py                    # 生成回答并记录参数
+│   ├── analyze_results.py             # 汇总截断和重复指标
+│   └── results/                      # 本地评测结果
 ├── data/
 │   ├── medical_raw/                   # 原始下载数据，本地保存
 │   └── medical/
@@ -47,8 +61,8 @@ MiniLoRA/
 │       ├── test.jsonl                # 300 条
 │       └── eval_prompts.jsonl         # 固定 10 个评测问题
 ├── outputs/                          # 本地 adapter 与 checkpoint
-│   ├── qwen-medical-lora/             # 10 题评测使用的单组训练模型
-│   └── lora_ablation/                 # 本次五组消融模型
+│   ├── qwen-medical-lora/             # 10 题评测使用的单组训练模型，也以 original_lora 参与正式评测
+│   └── lora_ablation/                 # 本次五组消融模型，其中 rank8_5000 参与正式评测
 └── results/
     ├── base_vs_lora.jsonl
     ├── lora_ablation_summary.csv
@@ -131,6 +145,35 @@ python -u scripts/ablation_experiment.py --run-all 2>&1 |
 ```
 
 本次完整日志已归档至 [results/logs/lora_ablation_20261118.log](results/logs/lora_ablation_20261118.log)。
+
+### 消融实验后的模型评测
+
+消融实验中，`rank8_5000` 的验证损失最低（2.611）。为了看它在实际问答中的表现，将它与基座模型 `base`、10 题生成对比所用的 `original_lora` 一起评测。三组沿用现有权重，在同一份题集和相同的推理设置下比较回答质量。
+
+1. **整理并划分题集。** 从 `data/medical/test.jsonl` 提取问题和参考答案，统一文本格式、去重，再用固定种子划分出 20 道调试题和 100 道正式测试题。按归一化后的题面检查两组互不重叠，并与训练集、验证集比对完全重复的题目。
+2. **在调试集上选推理配置。** 用 `original_lora` 对同一批 20 题依次比较生成上限 256 和 512、重复惩罚 1.0 和 1.1、贪心与采样温度 0.3 和 0.7。结合截断、重复和逐题切题情况，选定上限 256 tokens、重复惩罚 1.1、采样温度 0.3。 [调试过程与原始回答](model_eval/README.md)
+3. **固定配置运行正式测试。** 三个模型统一使用选定的生成参数、提示词和随机种子，各自回答相同的 100 道正式测试题，共生成 300 条回答。评测脚本保存原始回答和实际运行参数。 [固定推理配置](model_eval/eval_config.json)
+4. **统计指标并逐题评分。** 脚本统计触及长度上限的回答数和平均四字片段重复比例。AI 按事实正确性、要点覆盖、重复控制和格式可读性四项给每条回答打 0–2 分，严重错误单独标记，依据不足的项目记为待复核。 [正式评分规则](model_eval/README.md)
+
+#### 正式测试结果
+
+| 模型 | 截断 | 平均重复比例 | 同题平均总分 / 8 | 已标记严重错误 |
+|---|---:|---:|---:|---:|
+| `base` | 42/100 | 2.5% | 5.51 | 4 |
+| `original_lora` | 18/100 | 10.1% | 4.73 | 8 |
+| `rank8_5000` | 29/100 | 19.4% | 4.04 | 9 |
+
+总分基于三个模型四项均可评分的 45 道同题。Base 的要点覆盖与同题总分最高。`original_lora` 截断最少，部分短答漏掉核心问题。`rank8_5000` 的循环复述较多。逐题评分、原始回答和典型错例报告保存在本地 `model_eval/results/test_all_models/temp0.3_length256_repeat1.1/`。 [正式测试结果索引](model_eval/README.md)
+
+#### 复现正式推理与自动统计
+
+在项目根目录使用已准备好的题集和模型。复现时将 `$run` 指向新的结果目录。
+
+```powershell
+$run = "model_eval/results/test_all_models/temp0.3_length256_repeat1.1_rerun"
+python model_eval/run_eval.py --split test --config model_eval/eval_config.json --output-dir $run
+python model_eval/analyze_results.py --run-dir $run --output-file "$run/test_comparison.md"
+```
 
 ## 后续改进
 
