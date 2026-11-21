@@ -1,0 +1,50 @@
+{
+  "_comments": {
+    "paths": "模型路径使用绝对路径；adapter 和数据路径相对于 model_eval 文件夹。",
+    "seed": "固定采样种子，使用相同环境和批大小复现调试对比。",
+    "device_dtype": "本项目使用 RTX 3060 Laptop；统一在 cuda:0 上使用 bfloat16。",
+    "generation": "调试集选定的生成配置。长度上限为256，重复惩罚为1.1，采样温度为0.3。",
+    "max_new_tokens": "每题最多生成256个新token。若到达上限仍未生成结束标记，记为截断。",
+    "repeat_ngram_size": "连续 4 字片段用于统计回答内部重复；指标只作辅助，不直接决定人工分数。",
+    "sampling_parameters": "采样时使用 temperature=0.3、top_p=0.9；保持 top_k=50。",
+    "batch_size": "每批最多25题，使用左侧补位，三组模型使用相同的题目顺序。"
+  },
+  "version": "medical-test-v1",
+  "seed": 20261119,
+  "base_model": "D:/LLMProjects/LLMModels/Qwen2.5-0.5B-Instruct",
+  "models": [
+    {
+      "name": "base",
+      "adapter_dir": null
+    },
+    {
+      "name": "original_lora",
+      "adapter_dir": "../outputs/qwen-medical-lora"
+    },
+    {
+      "name": "rank8_5000",
+      "adapter_dir": "../outputs/lora_ablation/lora_rank8_5000"
+    }
+  ],
+  "device": "cuda:0",
+  "dtype": "bfloat16",
+  "system_prompt": "你是一名谨慎的医疗健康问答助手。回答应清晰、专业，并提醒用户必要时及时就医。",
+  "user_prefix": "请以谨慎、专业、易懂的方式回答下面的医疗健康问题。",
+  "datasets": {
+    "dev": "dev_set.jsonl",
+    "test": "test_set.jsonl"
+  },
+  "generation": {
+    "max_new_tokens": 256,
+    "do_sample": true,
+    "num_beams": 1,
+    "repetition_penalty": 1.1,
+    "no_repeat_ngram_size": 0,
+    "use_cache": true,
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "top_k": 50
+  },
+  "repeat_ngram_size": 4,
+  "batch_size": 25
+}
