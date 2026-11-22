@@ -1,0 +1,2 @@
+{"model": "original_lora", "question": "胃肠问质瘤的手术治疗有些什么？", "response": "腹腔镜手术；开腹手术；腹腔镜手术治疗", "input_tokens": 63, "output_tokens": 15, "finish_reason": "eos", "batch_seconds": 2.551}
+{"model": "original_lora", "question": "剖腹产后多久来月经的呀，来了好象月经样的血样,您这是月经，剖腹产后要多长时间来月经，像我这样的情况正常，剖腹产后多久来月经？", "response": "你好，根据你的描述，这种情况考虑一般在1-2个月左右恢复正常的月经周期，注意休息和营养，定期复查即可。", "input_tokens": 95, "output_tokens": 30, "finish_reason": "eos", "batch_seconds": 2.551}

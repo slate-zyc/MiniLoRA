@@ -13,9 +13,6 @@
 /data/medical/valid.jsonl
 /data/medical/test.jsonl
 
-# 模型评测结果文件
-/model_eval/results/
-
 # 下载缓存与普通运行日志
 .hf_cache/
 .cache/

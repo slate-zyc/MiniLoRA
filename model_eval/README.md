@@ -109,3 +109,16 @@ python model_eval/run_eval.py --split test
 $run = "model_eval/results/test_all_models/temp0.3_length256_repeat1.1"
 python model_eval/analyze_results.py --run-dir $run --output-file "$run/test_comparison.md"
 ~~~
+
+## AI Judge 协议与评分汇总
+
+正式评测生成 `answers.jsonl` 后，将回答和 `test_set.jsonl` 的题目、参考答案对齐，按 [AI Judge 评分协议](judge_prompt.md)匿名评分。把 Answer A、Answer B、Answer C 的评分还原到各自模型，按每题每模型一行生成 `review_scores.jsonl`。
+
+生成评分文件后，在项目根目录运行 [summarize_scores.py](summarize_scores.py) 读入 `review_scores.jsonl`，汇总单项均分、有效评分数、总分分布和严重错误。在三个模型四项均有分值的同一批题上计算胜平负和平均分差，并按题进行 10,000 次配对 Bootstrap。
+
+~~~powershell
+$run = "model_eval/results/test_all_models/temp0.3_length256_repeat1.1"
+python model_eval/summarize_scores.py --scores-file "$run/review_scores.jsonl" --output-file "$run/score_summary.md"
+~~~
+
+[本轮评分汇总与配对置信区间](results/test_all_models/temp0.3_length256_repeat1.1/score_summary.md)根据已保存的 300 条评分生成。
