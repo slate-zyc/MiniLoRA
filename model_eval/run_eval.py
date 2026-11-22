@@ -15,6 +15,9 @@
 
     # 正式评测
     python model_eval/run_eval.py --split test
+    # - 若再次运行应该重新指定目录，防止结果覆盖
+    $run = "model_eval/results/test_all_models/temp0.3_length256_repeat1.1_rerun"
+    python model_eval/analyze_results.py --run-dir $run --output-file "$run/test_comparison.md"
 
 输出:
     results/本次运行目录/answers.jsonl
@@ -164,6 +167,7 @@ def main():
     #     config = json.load(f)   # json.load() 用于直接读取 JSON 文件对象；json.loads() 用于 逐行 读取 JSONL 文件
     # 效果同上
     config = json.loads(args.config.read_text(encoding="utf-8"))    # read_text() 读取文件返回字符串
+    # config 为文件读取结果，后续修改 config 不会影响源文件
 
     # 准备评测模型
     if args.model is not None:  # 配置 --model 时只保留选择的一个模型，为 None 时三个模型都运行
@@ -191,7 +195,7 @@ def main():
     model_name = args.model or "all_models"
     decoding_name = f"temp{generation['temperature']}" if generation["do_sample"] else "greedy"
     output_dir = (args.output_dir or EVAL_DIR / "results" / f"{args.split}_{model_name}" / f"{decoding_name}_length{generation['max_new_tokens']}_repeat{generation['repetition_penalty']}")
-    output_dir.mkdir(parents=True, exist_ok=True)  # 每次运行单独保存，保留已有回答和评分
+    output_dir.mkdir(parents=True, exist_ok=False)  # 目录已存在时报错。防止覆盖；每次运行单独保存，保留已有回答和评分
 
     # 统一使用 Qwen2.5-0.5B-Instruct 的分词器
     tokenizer = AutoTokenizer.from_pretrained(
@@ -208,10 +212,19 @@ def main():
         "run_id": output_dir.name, "created_at": now.isoformat(), "split": args.split,      # 存放运行结果文件名，创建时间，数据集
         "question_count": len(questions), "dataset_count": len(all_questions),              # 实际回答问题数量，数据集问题数量
         "is_full_split": len(questions) == len(all_questions),          # 实际回答数量是否等于数据集问题数量
-        "config": config, "config_sha256": file_hash(args.config),      # 配置，配置文件哈希值
+        "source_config_sha256": file_hash(args.config),         # 原配置文件哈希值，实际修改只会影响内存中的 config，并不会影响磁盘中的 congfig.json
+        "effective_config": config,                             # 实际生效配置
+        "effective_config_sha256": hashlib.sha256(
+            json.dumps(config, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
+            # sort_keys=True 指定使用字典的key进行排序后再转换为 JSON 字符串，防止内容相同但先后顺序不同时哈希值不同
+            # （这里的 config 是在同一个源文件上修改的，所以不存在这种情况，可省略；
+            # 同样这里只是为了计算哈希，不需考虑可读性，也可省略 indent 参数，默认为 None）
+        ).hexdigest(),                                          # 实际生效配置哈希
+        # hashlib.sha256() 接收的是 bytes-like object（字节类对象），而不是普通的 Python 字符串 str。
+        # 所以需要使用Python内置str类型 自带 的方法 .encode() 将字符串转换为字节（bytes）
         "dataset_sha256": file_hash(dataset_path),                      # 数据集文件哈希值
         "tokenizer_sha256": file_hash(base_dir / "tokenizer.json"),     # 分词器文件哈希值
-        "chat_template_sha256": hashlib.sha256(tokenizer.chat_template.encode()).hexdigest(),       # 聊天模板哈希值  .encode() 用于将字符串转换为字节（bytes）, 以计算哈希
+        "chat_template_sha256": hashlib.sha256(tokenizer.chat_template.encode()).hexdigest(),       # 聊天模板哈希值
         "base_weights_sha256": {p.name: file_hash(p) for p in base_dir.glob("*.safetensors")},      # Qwen2.5-0.5B-Instruct 权重文件(文件名以 safetensors 结尾)哈希值   glob() 是 Path 对象的方法，用于按照通配符查找文件
         "environment": {
             "python": platform.python_version(), "platform": platform.platform(),       # python 版本， 运行平台（Windows）

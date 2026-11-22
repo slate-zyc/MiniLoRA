@@ -278,6 +278,7 @@ def main() -> None:
                         help="0 = 用全部数据，>0 = 只用前 N 条（调试用）")
     parser.add_argument("--max-valid-samples", type=int, default=0,  # 限制验证数据量
                         help="0 = 用全部数据")
+    parser.add_argument("--seed", type=int, default=20261122)       # todo
     args = parser.parse_args()
 
     # ============================================================
@@ -346,6 +347,17 @@ def main() -> None:
         lambda x: preprocess(x, tokenizer, args.max_length),
         remove_columns=list(valid_items[0].keys()),
     )
+    # # todo 因果语言模型的标签会错开一位，排除截断后没有有效预测目标的样本。
+    # train_dataset = train_dataset.filter(
+    #     lambda item: any(label != -100 for label in item["labels"][1:])
+    # )
+    # valid_dataset = valid_dataset.filter(
+    #     lambda item: any(label != -100 for label in item["labels"][1:])
+    # )
+    # if len(train_dataset) == 0 or len(valid_dataset) == 0:
+    #     raise ValueError("过滤后训练集或验证集为空，请检查数据及 --max-length。")
+    # print(f"有效训练样本：{len(train_dataset)}，有效验证样本：{len(valid_dataset)}")
+    # 这里没有做 如果 Prompt 太长，可能导致截断后的 labels 全部都是 -100，也就是没有任何有效监督目标 的过滤，是因为在质量检查中只有 max_length=256 会出现回答全部被截掉的情况。
 
     # # 虽然 batch=1，但不同样本的 token 长度不同，某个长样本可能让显存突然升高。
     # lengths = [len(ids) for ids in train_dataset["input_ids"]]
@@ -385,6 +397,15 @@ def main() -> None:
         eval_steps=100,              # 每 100 步在验证集上评估一次
         save_strategy="steps",       # 按步数保存
         save_total_limit=2,          # 最多保留 2 个 checkpoint（节省磁盘）
+
+        # # todo 训练过程中自动评估模型，并保存验证集表现最好的模型
+        # load_best_model_at_end=True,            # 训练结束时，自动加载表现最好的 checkpoint
+        # metric_for_best_model="eval_loss",      # 指定使用哪个指标判断模型的好坏
+        # greater_is_better=False,                # 指定评估指标的优化方向（True: 越大越好；False: 越小越好）
+
+        # todo 随机种子
+        # seed=args.seed,
+        # data_seed=args.seed,
 
         bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),  # CUDA 可用时且支持时开启 bfloat16 混合精度
         fp16=False,                  # 不用 float16（bfloat16 更稳定）
