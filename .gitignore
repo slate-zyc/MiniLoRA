@@ -19,9 +19,6 @@
 /logs/
 *.log
 
-# 保留用于分析和复现的实验日志
-!results/logs/*.log
-
 # Python 环境、缓存和构建产物
 .venv/
 venv/

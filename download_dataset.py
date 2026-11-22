@@ -50,67 +50,67 @@ if not downloaded_files:
     print("\n所有文件下载失败！")
     exit(1)
 
-print("\n读取并处理数据...")
-all_data = []
-for fpath, desc in downloaded_files:
-    print(f"读取 {desc}: {fpath}...")
-    with open(fpath, "r", encoding="utf-8") as f:
-        content = f.read().strip()
-        if not content:
-            continue
-        # 兼容 JSON 数组和 JSONL 两种格式
-        if content.startswith("["):
-            # JSON 数组格式
-            try:
-                items = json.loads(content)
-                all_data.extend(items)
-            except json.JSONDecodeError as e:
-                print(f"  解析 JSON 数组失败: {e}")
-        else:
-            # JSONL 格式（每行一个 JSON 对象）
-            for line in content.split("\n"):
-                line = line.strip()
-                if line:
-                    try:
-                        item = json.loads(line)
-                        all_data.append(item)
-                    except json.JSONDecodeError:
-                        pass
-
-print(f"共读取 {len(all_data)} 条数据")
-
-if all_data:
-    print(f"数据字段: {list(all_data[0].keys())}")
-    print(f"\n前3条数据示例:")
-    for i in range(min(3, len(all_data))):
-        print(f"\n--- 示例 {i+1} ---")
-        print(json.dumps(all_data[i], ensure_ascii=False, indent=2)[:500])
-
-    sample_size = min(10000, len(all_data))
-    random.seed(42)
-    random.shuffle(all_data)
-    samples = all_data[:sample_size]
-
-    train_size = int(sample_size * 0.9)
-    valid_size = sample_size - train_size
-
-    train_data = samples[:train_size]
-    valid_data = samples[train_size:]
-
-    os.makedirs("data/medical", exist_ok=True)
-
-    train_file = "data/medical/train.jsonl"
-    with open(train_file, "w", encoding="utf-8") as f:
-        for item in train_data:
-            f.write(json.dumps(item, ensure_ascii=False) + "\n")
-
-    valid_file = "data/medical/valid.jsonl"
-    with open(valid_file, "w", encoding="utf-8") as f:
-        for item in valid_data:
-            f.write(json.dumps(item, ensure_ascii=False) + "\n")
-
-    print(f"\n已保存 {train_size} 条训练数据到 {train_file}")
-    print(f"已保存 {valid_size} 条验证数据到 {valid_file}")
-    print("\n数据集下载和处理完成！")
-else:
-    print("未读取到数据。")
+# print("\n读取并处理数据...")
+# all_data = []
+# for fpath, desc in downloaded_files:
+#     print(f"读取 {desc}: {fpath}...")
+#     with open(fpath, "r", encoding="utf-8") as f:
+#         content = f.read().strip()
+#         if not content:
+#             continue
+#         # 兼容 JSON 数组和 JSONL 两种格式
+#         if content.startswith("["):
+#             # JSON 数组格式
+#             try:
+#                 items = json.loads(content)
+#                 all_data.extend(items)
+#             except json.JSONDecodeError as e:
+#                 print(f"  解析 JSON 数组失败: {e}")
+#         else:
+#             # JSONL 格式（每行一个 JSON 对象）
+#             for line in content.split("\n"):
+#                 line = line.strip()
+#                 if line:
+#                     try:
+#                         item = json.loads(line)
+#                         all_data.append(item)
+#                     except json.JSONDecodeError:
+#                         pass
+#
+# print(f"共读取 {len(all_data)} 条数据")
+#
+# if all_data:
+#     print(f"数据字段: {list(all_data[0].keys())}")
+#     print(f"\n前3条数据示例:")
+#     for i in range(min(3, len(all_data))):
+#         print(f"\n--- 示例 {i+1} ---")
+#         print(json.dumps(all_data[i], ensure_ascii=False, indent=2)[:500])
+#
+#     sample_size = min(10000, len(all_data))
+#     random.seed(42)
+#     random.shuffle(all_data)
+#     samples = all_data[:sample_size]
+#
+#     train_size = int(sample_size * 0.9)
+#     valid_size = sample_size - train_size
+#
+#     train_data = samples[:train_size]
+#     valid_data = samples[train_size:]
+#
+#     os.makedirs("data/medical", exist_ok=True)
+#
+#     train_file = "data/medical/train.jsonl"
+#     with open(train_file, "w", encoding="utf-8") as f:
+#         for item in train_data:
+#             f.write(json.dumps(item, ensure_ascii=False) + "\n")
+#
+#     valid_file = "data/medical/valid.jsonl"
+#     with open(valid_file, "w", encoding="utf-8") as f:
+#         for item in valid_data:
+#             f.write(json.dumps(item, ensure_ascii=False) + "\n")
+#
+#     print(f"\n已保存 {train_size} 条训练数据到 {train_file}")
+#     print(f"已保存 {valid_size} 条验证数据到 {valid_file}")
+#     print("\n数据集下载和处理完成！")
+# else:
+#     print("未读取到数据。")

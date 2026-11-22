@@ -37,7 +37,7 @@ python model_eval/check_data.py
 
 ## 实验记录与选择
 
-以下记录以 2026-11-21 16:41–16:43 重跑的五组结果为准，逐条按[调试集](dev_set.jsonl)行号对齐。重复比例是每题的连续 4 字片段重复比例，再对 20 题取平均。
+以下记录取自 2026-11-21 16:41–16:43 的五组运行。表中指标来自 `analyze_results.py`，下方逐题观察按 [调试集](dev_set.jsonl) 行号对照各组保存的原始回答。重复比例按每题的连续 4 字片段计算，再对 20 题取平均。 [调试对照表](results/dev_original_lora/dev_comparison.md)
 
 | 运行 | 模型 | 长度上限 | 惩罚 | 解码方式 | 回答数 | 截断 | 平均重复比例 | 平均输出 tokens |
 |---|---|---:|---:|---|---:|---:|---:|---:|
@@ -48,7 +48,7 @@ python model_eval/check_data.py
 | [temp0.7_length256_repeat1.1](results/dev_original_lora/temp0.7_length256_repeat1.1/answers.jsonl) | original_lora | 256 | 1.1 | 采样 0.7 | 20 | 1/20 | 4.9% | 73.5 |
 
 
-1. **长度选 256。** 两组触顶的是同样 6 题（第 1、5、6、7、10、14 题），其余 14 题的回答逐字相同。这 6 题的 512 版本都从 256 版本的末尾继续生成。胃肠间质瘤和脑静脉血栓影像题循环同一术语，低频神经肌和重症胆管炎题继续堆叠护理措辞，面神经损伤题循环列举颈椎检查，微波治疗前列腺炎题继续列举无关疾病，后段也出现循环。放宽上限后，6 题仍全部截断。
+1. **长度选 256。** 逐题对照原始回答，两组触顶的是同样 6 题（第 1、5、6、7、10、14 题），其余 14 题的回答逐字相同。这 6 题的 512 版本都从 256 版本的末尾继续生成。胃肠间质瘤和脑静脉血栓影像题循环同一术语，低频神经肌和重症胆管炎题继续堆叠护理措辞，面神经损伤题循环列举颈椎检查，微波治疗前列腺炎题继续列举无关疾病，后段也出现循环。放宽上限后，6 题仍全部截断。
 2. **重复惩罚选 1.1。** 在相同长度下，平均重复比例从 36.9% 降到 18.0%，截断从 8 题降到 6 题。原先截断的第 2、3、16、18、20 题自然结束，同时第 1、6、10 题新触顶。例如，第 2 题剖腹产后月经不再循环，第 10 题重症胆管炎却从一句“综合护理”变成反复列举护理术语。
 3. **采样温度选 0.3。** 与贪心相比，两个温度都减少了截断和重复。0.7 的自动指标更低，但第 2 题绕开了剖腹产后的月经时间，第 11 题从婴儿排便转去讲辅食且前后给出不同的添加时间，第 19 题转向另一诊断和用药。0.3 在这三题更贴近所问，但第 2 题只笼统给出恢复时间，第 11 题未明确回答排便是否正常，第 16 题也未回答术后是否需要化疗。结合这些例子，选择 0.3。
 
@@ -56,24 +56,26 @@ python model_eval/check_data.py
 
 ## 复现实验
 
-按第 1 步、第 2 步、第 3 步的顺序执行。选定值已是脚本默认值，复现贪心组时显式传入 `--greedy`。
+按第 1 步、第 2 步、第 3 步的顺序执行。每次复现将 `$dev` 指向一个新的目录。贪心组显式传入 `--greedy`。
 
 ~~~powershell
-python model_eval/run_eval.py --split dev --model original_lora --greedy --max-new-tokens 256 --repetition-penalty 1.1
-python model_eval/run_eval.py --split dev --model original_lora --greedy --max-new-tokens 512 --repetition-penalty 1.1
-python model_eval/run_eval.py --split dev --model original_lora --greedy --max-new-tokens 256 --repetition-penalty 1.0
-python model_eval/run_eval.py --split dev --model original_lora --temperature 0.3 --max-new-tokens 256 --repetition-penalty 1.1 
-python model_eval/run_eval.py --split dev --model original_lora --temperature 0.7 --max-new-tokens 256 --repetition-penalty 1.1 
+$dev = "model_eval/results/dev_original_lora_rerun"
+python model_eval/run_eval.py --split dev --model original_lora --greedy --max-new-tokens 256 --repetition-penalty 1.1 --output-dir "$dev/greedy_length256_repeat1.1"
+python model_eval/run_eval.py --split dev --model original_lora --greedy --max-new-tokens 512 --repetition-penalty 1.1 --output-dir "$dev/greedy_length512_repeat1.1"
+python model_eval/run_eval.py --split dev --model original_lora --greedy --max-new-tokens 256 --repetition-penalty 1.0 --output-dir "$dev/greedy_length256_repeat1.0"
+python model_eval/run_eval.py --split dev --model original_lora --temperature 0.3 --max-new-tokens 256 --repetition-penalty 1.1 --output-dir "$dev/temp0.3_length256_repeat1.1"
+python model_eval/run_eval.py --split dev --model original_lora --temperature 0.7 --max-new-tokens 256 --repetition-penalty 1.1 --output-dir "$dev/temp0.7_length256_repeat1.1"
 ~~~
 
 每次运行目录都包含 `answers.jsonl` 和记录实际参数的 `run_info.json`。将多个目录传给 `analyze_results.py --run-dir` 可以生成对照表。
 ~~~powershell
 python model_eval/analyze_results.py --run-dir `
-    model_eval/results/dev_original_lora/greedy_length256_repeat1.1 `
-    model_eval/results/dev_original_lora/greedy_length512_repeat1.1 `
-    model_eval/results/dev_original_lora/greedy_length256_repeat1.0 `
-    model_eval/results/dev_original_lora/temp0.3_length256_repeat1.1 `
-    model_eval/results/dev_original_lora/temp0.7_length256_repeat1.1
+    "$dev/greedy_length256_repeat1.1" `
+    "$dev/greedy_length512_repeat1.1" `
+    "$dev/greedy_length256_repeat1.0" `
+    "$dev/temp0.3_length256_repeat1.1" `
+    "$dev/temp0.7_length256_repeat1.1" `
+    --output-file "$dev/dev_comparison.md"
 ~~~
 
 ## 正式评分规则
@@ -93,22 +95,34 @@ python model_eval/analyze_results.py --run-dir `
 
 使用调试集选定的配置，对 `base`、`original_lora` 和 `rank8_5000` 运行同一份 100 题正式测试集。三组共 300 条回答，均已逐题记录。本轮配置见 [run_info.json](results/test_all_models/temp0.3_length256_repeat1.1/run_info.json)。
 
-| 模型 | 截断 | 平均重复比例 | 45 道同题平均总分 / 8 | 已标记严重错误 |
-|---|---:|---:|---:|---:|
-| base | 42/100 | 2.5% | 5.51 | 4 |
-| original_lora | 18/100 | 10.1% | 4.73 | 8 |
-| rank8_5000 | 29/100 | 19.4% | 4.04 | 9 |
+| 模型 | 截断 | 平均重复比例 | 要点覆盖均分 / 2（有效评分数） | 同题平均总分 / 8 | 已标记严重错误 |
+|---|---:|---:|---:|---:|---:|
+| base | 42/100 | 2.5% | 1.23（97） | 5.51 | 4 |
+| original_lora | 18/100 | 10.1% | 0.71（97） | 4.73 | 8 |
+| rank8_5000 | 29/100 | 19.4% | 0.69（97） | 4.04 | 9 |
 
-将三个模型四项均可评分的 45 道同题用于总分对比，依据不足的单项标为待复核。Base 的要点覆盖和同题总分最高；`original_lora` 截断最少，但存在短答漏掉题目核心的情况；`rank8_5000` 的循环复述更多。详见 [正式测试报告](results/test_all_models/temp0.3_length256_repeat1.1/test_review.md)、[原始回答](results/test_all_models/temp0.3_length256_repeat1.1/answers.jsonl)、[逐题评分](results/test_all_models/temp0.3_length256_repeat1.1/review_scores.jsonl)和[自动统计](results/test_all_models/temp0.3_length256_repeat1.1/test_comparison.md)。
+配对总分对比使用三个模型四项均可评分的 45 道同题。表中要点覆盖、同题平均总分和严重错误来自评分汇总，截断和平均重复比例来自自动统计。详见 [正式测试报告](results/test_all_models/temp0.3_length256_repeat1.1/test_review.md)、[原始回答](results/test_all_models/temp0.3_length256_repeat1.1/answers.jsonl)、[逐题评分](results/test_all_models/temp0.3_length256_repeat1.1/review_scores.jsonl)和[自动统计](results/test_all_models/temp0.3_length256_repeat1.1/test_comparison.md)。
 
-在项目根目录用 PowerShell 可复现正式推理和自动统计。
+在项目根目录用 PowerShell 可复现正式推理和自动统计。每次复现将 `$run` 指向一个新的目录。
 
 ~~~powershell
 conda activate minilora
-python model_eval/run_eval.py --split test 
-$run = "model_eval/results/test_all_models/temp0.3_length256_repeat1.1"
+$run = "model_eval/results/test_all_models/temp0.3_length256_repeat1.1_rerun"
+python model_eval/run_eval.py --split test --config model_eval/eval_config.json --output-dir $run
 python model_eval/analyze_results.py --run-dir $run --output-file "$run/test_comparison.md"
 ~~~
+
+### 配对 Bootstrap 结果
+
+在三个模型共同可评分的 45 道题上，按题进行 10,000 次有放回抽样，固定种子为 `20261122`。表中分差为前一个模型总分减去后一个模型总分。
+
+| 比较 | 平均配对差值 | 95% CI |
+|---|---:|---:|
+| Base - Original LoRA | 0.778 | [0.222, 1.333] |
+| Base - Rank8-5000 | 1.467 | [0.822, 2.156] |
+| Original LoRA - Rank8-5000 | 0.689 | [0.156, 1.222] |
+
+[本轮评分汇总与配对置信区间](results/test_all_models/temp0.3_length256_repeat1.1/score_summary.md)根据已保存的 300 条评分生成。
 
 ## AI Judge 协议与评分汇总
 
@@ -120,5 +134,3 @@ python model_eval/analyze_results.py --run-dir $run --output-file "$run/test_com
 $run = "model_eval/results/test_all_models/temp0.3_length256_repeat1.1"
 python model_eval/summarize_scores.py --scores-file "$run/review_scores.jsonl" --output-file "$run/score_summary.md"
 ~~~
-
-[本轮评分汇总与配对置信区间](results/test_all_models/temp0.3_length256_repeat1.1/score_summary.md)根据已保存的 300 条评分生成。

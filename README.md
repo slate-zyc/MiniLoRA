@@ -18,12 +18,13 @@
 | rank8_200 | 200 | 2.685 | 2.789 |
 | rank8_5000 | 4999 | 2.708 | 2.611 |
 
-五组均使用相同的 159 条有效验证数据，固定 alpha/r=2。增加数据量的收益大于本次增加 rank 的收益，rank8_5000 的验证损失最低。
+五组均使用相同的 159 条有效验证数据，固定 alpha/r=2。在这两组对照中，增加训练数据量带来的验证损失降幅更大，rank8_5000 的验证损失最低。
 
 详细记录：[实验结果分析](实验结果分析.md) · [消融 CSV](results/lora_ablation_summary.csv) · [训练日志](results/logs/lora_ablation_20261118.log) · [生成对比](results/base_vs_lora.jsonl)
 
-消融实验后的 100 题正式评测中，`base` 在 45 道共同可评分题上的平均总分最高（5.51/8），`original_lora` 和 `rank8_5000` 分别为 4.73 和 4.04。`original_lora` 截断最少（18/100），`rank8_5000` 的平均重复比例最高（19.4%）。 [完整评测结果](#正式测试结果)
+消融实验后的 100 题正式评测中，在 45 道共同可评分题上，`base`、`original_lora` 和 `rank8_5000` 的平均总分依次为 5.51、4.73 和 4.04（满分 8 分）。`original_lora` 截断最少（18/100），`rank8_5000` 的平均重复比例最高（19.4%）。 [完整评测结果](#正式测试结果)
 
+配对 Bootstrap 结果显示三个区间均高于 0，方向与这 45 道题的平均总分排序一致。
 ## 项目结构
 
 ```text
@@ -36,7 +37,7 @@ MiniLoRA/
 ├── GPU_test.py                       # 检查 CUDA、GPU 与 BF16
 ├── data_quality_audit.ipynb           # 数据长度、空值和截断审计
 ├── 实验结果分析.md
-├── LoRA训练显存不足问题复盘.md
+├── LoRA训练显存不足问题复盘.md        # 包含结果日志
 ├── scripts/
 │   ├── prepare_medical_sft.py         # 按原始 train/valid/test 划分清洗、抽样
 │   ├── train_lora.py                  # 单组 LoRA 训练、SFT 预处理
@@ -52,6 +53,8 @@ MiniLoRA/
 │   ├── check_data.py                  # 检查题集重复及与训练、验证集重合
 │   ├── run_eval.py                    # 生成回答并记录参数
 │   ├── analyze_results.py             # 汇总截断和重复指标
+│   ├── judge_prompt.md                # 盲评规则与评分文件格式
+│   ├── summarize_scores.py            # 汇总逐题评分与配对 Bootstrap
 │   └── results/                      # 本地评测结果
 ├── data/
 │   ├── medical_raw/                   # 原始下载数据，本地保存
@@ -93,7 +96,7 @@ python GPU_test.py
 模型：[Qwen/Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)  
 数据：[shibing624/medical](https://huggingface.co/datasets/shibing624/medical)
 
-当前基础模型目录为 `D:\LLMProjects\LLMModels\Qwen2.5-0.5B-Instruct`。更换目录时，更新下载脚本中的 `local_dir`，并在训练、推理和评测命令中传入 `--model-name`。
+当前基础模型目录为 `D:\LLMProjects\LLMModels\Qwen2.5-0.5B-Instruct`。更换目录时，更新下载脚本中的 `local_dir`。训练、单题推理和 10 题生成对比使用 `--model-name` 指定模型目录，`model_eval` 的评测使用配置文件中的 `base_model`。 [正式评测配置](model_eval/eval_config.json)
 
 ```powershell
 python download_model.py
@@ -104,6 +107,8 @@ python scripts/prepare_medical_sft.py --train-size 5000 --valid-size 300 --test-
 数据准备保留原始 train/valid/test 划分，分别清洗、打乱、抽样。SFT 数据包含 `instruction`、`input`、`output` 三个字段；训练时仅对 assistant 回答计算损失。
 
 ## 运行实验
+
+复跑训练、消融或 10 题生成对比时，为权重目录、消融 CSV 和回答文件指定新的输出路径，以保留本轮归档。
 
 ### 单组训练
 
@@ -157,15 +162,27 @@ python -u scripts/ablation_experiment.py --run-all 2>&1 |
 
 #### 正式测试结果
 
-| 模型 | 截断 | 平均重复比例 | 同题平均总分 / 8 | 已标记严重错误 |
-|---|---:|---:|---:|---:|
-| `base` | 42/100 | 2.5% | 5.51 | 4 |
-| `original_lora` | 18/100 | 10.1% | 4.73 | 8 |
-| `rank8_5000` | 29/100 | 19.4% | 4.04 | 9 |
+| 模型 | 截断 | 平均重复比例 | 要点覆盖均分 / 2（有效评分数） | 同题平均总分 / 8 | 已标记严重错误 |
+|---|---:|---:|---:|---:|---:|
+| `base` | 42/100 | 2.5% | 1.23（97） | 5.51 | 4 |
+| `original_lora` | 18/100 | 10.1% | 0.71（97） | 4.73 | 8 |
+| `rank8_5000` | 29/100 | 19.4% | 0.69（97） | 4.04 | 9 |
 
-总分基于三个模型四项均可评分的 45 道同题。Base 的要点覆盖与同题总分最高。`original_lora` 截断最少，部分短答漏掉核心问题。`rank8_5000` 的循环复述较多。逐题评分、原始回答和典型错例报告保存在本地 `model_eval/results/test_all_models/temp0.3_length256_repeat1.1/`。 [正式测试结果索引](model_eval/README.md)
+截断和重复比例来自生成结果脚本，要点覆盖、同题平均总分和严重错误来自逐题评分汇总。配对总分对比使用三个模型四项均可评分的 45 道同题。 [生成统计](model_eval/results/test_all_models/temp0.3_length256_repeat1.1/test_comparison.md) · [评分汇总](model_eval/results/test_all_models/temp0.3_length256_repeat1.1/score_summary.md) · [评测记录](model_eval/README.md)
 
-#### 复现正式推理与自动统计
+##### 配对 Bootstrap 结果
+
+在三个模型共同可评分的 45 道题上，按题有放回抽样 10,000 次，种子为 `20261122`。表中分差为前一个模型总分减去后一个模型总分。
+
+| 比较 | 平均配对差值 | 95% CI |
+|---|---:|---:|
+| Base - Original LoRA | 0.778 | [0.222, 1.333] |
+| Base - Rank8-5000 | 1.467 | [0.822, 2.156] |
+| Original LoRA - Rank8-5000 | 0.689 | [0.156, 1.222] |
+
+三个区间均高于 0，方向与这 45 道题的平均总分排序一致。
+
+#### 复现正式推理、自动统计与评分汇总
 
 在项目根目录使用已准备好的题集和模型。复现时将 `$run` 指向新的结果目录。
 
@@ -174,6 +191,17 @@ $run = "model_eval/results/test_all_models/temp0.3_length256_repeat1.1_rerun"
 python model_eval/run_eval.py --split test --config model_eval/eval_config.json --output-dir $run
 python model_eval/analyze_results.py --run-dir $run --output-file "$run/test_comparison.md"
 ```
+
+按评分协议对本次生成的回答逐题评分，将评分保存为 `$run/review_scores.jsonl`。评分文件准备好后，在同一个 PowerShell 会话运行以下命令，生成含同题平均总分和配对 Bootstrap 区间的 `score_summary.md`。 [AI Judge 评分协议](model_eval/judge_prompt.md)
+
+```powershell
+python model_eval/summarize_scores.py --scores-file "$run/review_scores.jsonl" --output-file "$run/score_summary.md"
+```
+
+## 实验结论
+
+1. **模型评测：验证 Loss 下降并不必然带来生成质量提升。** 各自的训练记录中，`rank8_5000` 的最终验证 Loss 为 2.611，低于 `original_lora` 的 2.681。在正式评测的 45 道共同可评分题上，`original_lora` 比 `rank8_5000` 平均高 0.689 分，95% CI 为 [0.156, 1.222]。 [原始 LoRA 训练记录](LoRA训练显存不足问题复盘.md) · [消融结果](results/lora_ablation_summary.csv) · [配对评分结果](model_eval/results/test_all_models/temp0.3_length256_repeat1.1/score_summary.md)
+2. **消融实验：增加样本后验证 Loss 会下降。** 固定 rank=8 时，训练样本为 200、1,000、4,999 条的三组实验，验证 Loss 依次为 2.789、2.678、2.611。样本量最大的 `rank8_5000` 在正式评测中的要点覆盖均分为 0.69，在三个模型中最低。 [消融结果](results/lora_ablation_summary.csv) · [评分汇总](model_eval/results/test_all_models/temp0.3_length256_repeat1.1/score_summary.md)
 
 ## 后续改进
 

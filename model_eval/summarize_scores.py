@@ -141,9 +141,9 @@ def compare_models(totals: dict[str, dict[int, int]]) -> list[str]:
                   },
            ...
         }
-    输出：三模型共同可评分题的配对结果 和 配对 Bootstrap 置信区间，便于直接转为 md 的形式
+    输出：共同题的各模型平均总分、配对结果和 Bootstrap 置信区间
     """
-    common = sorted(set.intersection(*(set(scores) for scores in totals.values())))     # 45 道题的题号
+    common = sorted(set.intersection(*(set(scores) for scores in totals.values())))     # 三个模型共同可评分的题号
     # set.intersection() 是 Python 集合（set）的交集方法
     # set(scores) 取字典的键（题号）
     # *sets：将 sets 中的元素解包，作为独立的位置参数传入函数。
@@ -153,6 +153,17 @@ def compare_models(totals: dict[str, dict[int, int]]) -> list[str]:
         return lines + ["没有共同可评分题，无法进行配对比较。"]
 
     lines.extend([
+        "同题平均总分是每题四项评分之和在共同题目上的平均值，每题满分 8 分。",
+        "",
+        "| 模型 | 同题平均总分 / 8 |",
+        "|---|---:|",
+    ])
+    for model, label in MODEL_LABELS.items():
+        average_total = mean(totals[model][question_idx] for question_idx in common)  # 三个模型都按同一批题取平均
+        lines.append(f"| {label} | {average_total:.2f} |")
+
+    lines.extend([
+        "",
         "胜、平、负均以前一个模型为基准。",
         "",
         "| 比较 | 胜 | 平 | 负 |",
